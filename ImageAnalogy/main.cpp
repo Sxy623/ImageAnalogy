@@ -10,6 +10,8 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 
+#include "ImageAnalogy.hpp"
+
 using namespace std;
 using namespace cv;
 
@@ -39,10 +41,16 @@ int main() {
         return 0;
     }
     
+    // 结果生成
+    ImageAnalogy analogy;
+    analogy.process(src, srcFiltered, dst, dstFiltered);
+    imwrite(dstFilteredPath, dstFiltered);
+    
     // 显示图片
     imshow("src", src);
     imshow("srcFiltered", srcFiltered);
     imshow("dst", dst);
+    imshow("dstFiltered", dstFiltered);
     waitKey();
     return 0;
 }

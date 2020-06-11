@@ -40,6 +40,7 @@
 		907079D224915C29005B7C15 /* libopencv_stitching.4.1.2.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 907079B424915C29005B7C15 /* libopencv_stitching.4.1.2.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		907079D52491664E005B7C15 /* libflann.1.9.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 907079D42491664D005B7C15 /* libflann.1.9.1.dylib */; };
 		907079D62491664E005B7C15 /* libflann.1.9.1.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 907079D42491664D005B7C15 /* libflann.1.9.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		907079DE249215C4005B7C15 /* ImageAnalogy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 907079DC249215C4005B7C15 /* ImageAnalogy.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -100,6 +101,8 @@
 		907079B424915C29005B7C15 /* libopencv_stitching.4.1.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_stitching.4.1.2.dylib; path = ../../../../../usr/local/lib/libopencv_stitching.4.1.2.dylib; sourceTree = "<group>"; };
 		907079D42491664D005B7C15 /* libflann.1.9.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libflann.1.9.1.dylib; path = ../../../../../usr/local/Cellar/flann/1.9.1_9/lib/libflann.1.9.1.dylib; sourceTree = "<group>"; };
 		907079D724916669005B7C15 /* ImageAnalogy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ImageAnalogy.entitlements; sourceTree = "<group>"; };
+		907079DC249215C4005B7C15 /* ImageAnalogy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ImageAnalogy.cpp; sourceTree = "<group>"; };
+		907079DD249215C4005B7C15 /* ImageAnalogy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ImageAnalogy.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +154,8 @@
 			children = (
 				907079D724916669005B7C15 /* ImageAnalogy.entitlements */,
 				90358F0B248D68D40049798C /* main.cpp */,
+				907079DC249215C4005B7C15 /* ImageAnalogy.cpp */,
+				907079DD249215C4005B7C15 /* ImageAnalogy.hpp */,
 			);
 			path = ImageAnalogy;
 			sourceTree = "<group>";
@@ -237,6 +242,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				90358F0C248D68D40049798C /* main.cpp in Sources */,
+				907079DE249215C4005B7C15 /* ImageAnalogy.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
