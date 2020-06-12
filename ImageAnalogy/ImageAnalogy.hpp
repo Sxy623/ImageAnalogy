@@ -9,11 +9,18 @@
 #ifndef ImageAnalogy_hpp
 #define ImageAnalogy_hpp
 
-#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <vector>
 #include <flann/flann.hpp>
+#include <opencv2/opencv.hpp>
 
-typedef flann::Matrix<float> FeatureMatrix;
+typedef flann::Matrix<float> FloatMatrix;
+typedef flann::Matrix<int> IntMatrix;
+typedef flann::Index<flann::L2<float>> FlannIndex;
+typedef flann::KDTreeIndexParams FlannKDTreeIndexParams;
+typedef flann::SearchParams FlannSearchParams;
 
+using namespace std;
 using namespace cv;
 
 const float PI = 4.0 * atan(1.0);
@@ -39,12 +46,14 @@ private:
     // 特征向量维度
     static const int dimension = smallWindowSize * 2 + largeWindowSize + largeWindowSize / 2 + 1;
     // 特征向量
-    FeatureMatrix *srcFeatures[levels];
+    FloatMatrix *srcFeatures[levels];
     
     void extractLuminance(const Mat& src, Mat &dst);
     void buildPyramids(const Mat& src, const Mat& srcFiltered, const Mat& dst, const Mat& dstFiltered);
     void fillKernel(float *kernel, int size, float sigma);
     void createKernel();
+    void calculateFeature(float *result, int x, int y, const Mat& origin, const Mat& filtered);
+    void calculateFeature(float *result, int x, int y, const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered);
     float* calculateFeatures(const Mat& origin, const Mat& filtered);
     float* calculateFeatures(const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered);
     void calculateSrcFeatures();

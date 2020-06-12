@@ -17,6 +17,53 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
     buildPyramids(src, srcFiltered, dst, dstFiltered);
     createKernel();
     calculateSrcFeatures();
+    // 从金字塔底层向上重建
+    for (int i = 0; i < levels; i++) {
+        // 数据结构初始化
+        FlannIndex ann(*srcFeatures[i], FlannKDTreeIndexParams(4));
+        ann.buildIndex();
+        // 用于保存结果
+        int numQuery = 1;
+        IntMatrix indices(new int[numQuery  * dimension], numQuery, dimension);
+        FloatMatrix dists(new float[numQuery  * dimension], numQuery, dimension);
+        float *queryData = new float[dimension];
+        // 遍历像素
+        for (int y = 0; y < dstPyramid[i].rows; y++) {
+            for (int x = 0; x < dstPyramid[i].cols; x++) {
+                // 计算当前像素的特征向量
+                if (i == 0) {
+                    calculateFeature(queryData, x, y, dstPyramid[i], dstFilteredPyramid[i]);
+                }
+                else {
+                    calculateFeature(queryData, x, y, dstPyramid[i - 1], dstFilteredPyramid[i - 1], dstPyramid[i], dstFilteredPyramid[i]);
+                }
+                // 寻找近似最近邻
+                FloatMatrix query(queryData, numQuery, dimension);
+                ann.knnSearch(query, indices, dists, numQuery, FlannSearchParams(128));
+                // 填充像素
+                int p = indices.ptr()[0];
+                int px = p % srcPyramid[i].cols, py = p / srcPyramid[i].cols;
+                dstFilteredPyramid[i].at<float>(y, x) = srcFilteredPyramid[i].at<float>(py, px);
+            }
+            cout << "Finish level " << i << " row " << y << endl;
+        }
+        Mat downSampled;
+        cvtColor(dst, downSampled, COLOR_BGR2YUV);
+        // 降采样到同一尺度
+        for (int level = levels - 1; level > i; level--) {
+            pyrDown(downSampled, downSampled);
+        }
+        // 用生成的结果替换原图Y通道
+        vector<Mat> YUV(3);
+        split(downSampled, YUV);
+        dstFilteredPyramid[i].convertTo(YUV[0], CV_8UC1);
+        Mat result;
+        merge(YUV, result);
+        cvtColor(result, result, COLOR_YUV2BGR);
+        // 显示当前层图片
+        imshow("image", result);
+        waitKey();
+    }
 }
 
 void ImageAnalogy::extractLuminance(const Mat& src, Mat &dst) {
@@ -72,6 +119,97 @@ void ImageAnalogy::createKernel() {
     fillKernel(kernel + 2 * smallWindowSize + largeWindowSize, largeWindow, sigma);
 }
 
+void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& origin, const Mat& filtered) {
+    int offset = 0;
+    float sum = 0;
+    
+    for (int k = 0; k < 2 * smallWindowSize; k++)
+        result[offset++] = 0;
+    
+    int count = 0;
+    int filteredFeatureDimension = largeWindowSize / 2 + 1;
+    for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
+        for (int dx = -largeWindow / 2; dx <= largeWindow / 2; dx++) {
+            int yy = y + dy, xx = x + dx;
+            count++;
+            if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
+                result[offset] = 0;
+                if (count <= filteredFeatureDimension) {
+                    result[offset + largeWindowSize] = 0;
+                }
+                offset++;
+                continue;
+            }
+            result[offset] = origin.at<float>(yy, xx) * kernel[offset];
+            sum += result[offset] * result[offset];
+            if (count <= filteredFeatureDimension) {
+                result[offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
+                sum += result[offset + largeWindowSize] * result[offset + largeWindowSize];
+            }
+            offset++;
+        }
+    }
+    
+    // 归一化
+    if (sum < eps) { return;; }
+    for (int offset = 0; offset < dimension; offset++) {
+        result[offset] /= sum;
+    }
+}
+
+void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered) {
+    int offset = 0;
+    float sum = 0;
+    
+    int halfY = y / 2, halfX = x / 2;
+    for (int dy = -smallWindow / 2; dy <= smallWindow / 2; dy++) {
+        for (int dx = -smallWindow / 2; dx <= smallWindow / 2; dx++) {
+            int yy = halfY + dy, xx = halfX + dx;
+            if (yy < 0 || xx < 0 || yy >= lowerOrigin.rows || xx >= lowerOrigin.cols) {
+                result[offset] = 0;
+                result[offset + smallWindowSize] = 0;
+                offset++;
+                continue;
+            }
+            result[offset] = lowerOrigin.at<float>(yy, xx) * kernel[offset];
+            sum += result[offset] * result[offset];
+            result[offset + smallWindowSize] = lowerFiltered.at<float>(yy, xx) * kernel[offset + smallWindowSize];
+            sum += result[offset + smallWindowSize] * result[offset + smallWindowSize];
+            offset++;
+        }
+    }
+    
+    int count = 0;
+    int filteredFeatureDimension = largeWindowSize / 2 + 1;
+    for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
+        for (int dx = -largeWindow / 2; dx <= largeWindow / 2; dx++) {
+            int yy = y + dy, xx = x + dx;
+            count++;
+            if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
+                result[offset] = 0;
+                if (count <= filteredFeatureDimension) {
+                    result[offset + largeWindowSize] = 0;
+                }
+                offset++;
+                continue;
+            }
+            result[offset] = origin.at<float>(yy, xx) * kernel[offset];
+            sum += result[offset] * result[offset];
+            if (count <= filteredFeatureDimension) {
+                result[offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
+                sum += result[offset + largeWindowSize] * result[offset + largeWindowSize];
+            }
+            offset++;
+        }
+    }
+    
+    // 归一化
+    if (sum < eps) { return; }
+    for (int offset = 0; offset < dimension; offset++) {
+        result[offset] /= sum;
+    }
+}
+
 float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
     int size = origin.rows * origin.cols;
     float *result = new float[size * dimension];
@@ -100,10 +238,10 @@ float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
                         continue;
                     }
                     result[start + offset] = origin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset];
+                    sum += result[start + offset] * result[start + offset];
                     if (count <= filteredFeatureDimension) {
                         result[start + offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                        sum += result[start + offset + largeWindowSize];
+                        sum += result[start + offset + largeWindowSize] * result[start + offset + largeWindowSize];
                     }
                     offset++;
                 }
@@ -140,9 +278,9 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
                         continue;
                     }
                     result[start + offset] = lowerOrigin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset];
+                    sum += result[start + offset] * result[start + offset];
                     result[start + offset + smallWindowSize] = lowerFiltered.at<float>(yy, xx) * kernel[offset + smallWindowSize];
-                    sum += result[start + offset + smallWindowSize];
+                    sum += result[start + offset + smallWindowSize] * result[start + offset + smallWindowSize];
                     offset++;
                 }
             }
@@ -162,10 +300,10 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
                         continue;
                     }
                     result[start + offset] = origin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset];
+                    sum += result[start + offset] * result[start + offset];
                     if (count <= filteredFeatureDimension) {
                         result[start + offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                        sum += result[start + offset + largeWindowSize];
+                        sum += result[start + offset + largeWindowSize] * result[start + offset + largeWindowSize];
                     }
                     offset++;
                 }
@@ -191,7 +329,7 @@ void ImageAnalogy::calculateSrcFeatures() {
         else {
             features = calculateFeatures(srcPyramid[i - 1], srcFilteredPyramid[i - 1], srcPyramid[i], srcFilteredPyramid[i]);
         }
-        srcFeatures[i] = new FeatureMatrix(features, count, dimension);
+        srcFeatures[i] = new FloatMatrix(features, count, dimension);
 //        for (int y = 0; y < srcFeatures[i]->rows; y++) {
 //            for (int x = 0; x < srcFeatures[i]->cols; x++)
 //                std::cout << srcFeatures[i]->ptr()[y * srcFeatures[i]->cols + x] << " ";
