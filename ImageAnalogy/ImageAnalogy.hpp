@@ -14,6 +14,8 @@
 #include <flann/flann.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "CoherenceMatch.hpp"
+
 typedef flann::Matrix<float> FloatMatrix;
 typedef flann::Matrix<int> IntMatrix;
 typedef flann::Index<flann::L2<float>> FlannIndex;
@@ -24,7 +26,7 @@ using namespace std;
 using namespace cv;
 
 const float PI = 4.0 * atan(1.0);
-const float eps = 1e-5;
+const float EPS = 1e-5;
 
 class ImageAnalogy {
 public:
@@ -47,6 +49,8 @@ private:
     static const int dimension = smallWindowSize * 2 + largeWindowSize + largeWindowSize / 2 + 1;
     // 特征向量
     FloatMatrix *srcFeatures[levels];
+    // 一致性参数
+    static const int kappa = 5;
     
     void extractLuminance(const Mat& src, Mat &dst);
     void buildPyramids(const Mat& src, const Mat& srcFiltered, const Mat& dst, const Mat& dstFiltered);
@@ -57,6 +61,7 @@ private:
     float* calculateFeatures(const Mat& origin, const Mat& filtered);
     float* calculateFeatures(const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered);
     void calculateSrcFeatures();
+    float featureDistance(float *a, float *b);
 };
 
 #endif /* ImageAnalogy_hpp */

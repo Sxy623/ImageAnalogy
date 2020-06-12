@@ -19,17 +19,26 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
     calculateSrcFeatures();
     // 从金字塔底层向上重建
     for (int i = 0; i < levels; i++) {
+        float weight = 1 + pow(2, i + 1 - levels) * kappa;
+//        int na = 0, nc = 0;
         // 数据结构初始化
         FlannIndex ann(*srcFeatures[i], FlannKDTreeIndexParams(4));
         ann.buildIndex();
         // 用于保存结果
         int numQuery = 1;
-        IntMatrix indices(new int[numQuery  * dimension], numQuery, dimension);
-        FloatMatrix dists(new float[numQuery  * dimension], numQuery, dimension);
+        IntMatrix indices(new int[numQuery * dimension], numQuery, dimension);
+        FloatMatrix dists(new float[numQuery * dimension], numQuery, dimension);
         float *queryData = new float[dimension];
+        // 一致性搜索
+        CoherenceMatch cm(srcPyramid[i].rows, srcPyramid[i].cols, dstPyramid[i].rows, dstPyramid[i].cols);
+        int size = dstPyramid[i].rows * dstPyramid[i].cols;
+        int *s = new int[size];
+        memset(s, 0, size * sizeof(int));
         // 遍历像素
         for (int y = 0; y < dstPyramid[i].rows; y++) {
             for (int x = 0; x < dstPyramid[i].cols; x++) {
+                int q = y * dstPyramid[i].cols + x;
+                int p;
                 // 计算当前像素的特征向量
                 if (i == 0) {
                     calculateFeature(queryData, x, y, dstPyramid[i], dstFilteredPyramid[i]);
@@ -39,13 +48,32 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
                 }
                 // 寻找近似最近邻
                 FloatMatrix query(queryData, numQuery, dimension);
+                int pA = indices.ptr()[0];
                 ann.knnSearch(query, indices, dists, numQuery, FlannSearchParams(128));
+                // 一致性搜索
+                int pC = cm.match(*srcFeatures[i], queryData, dimension, x, y, s);
+                if (pC == -1) {
+                    p = pA;
+                }
+                else {
+                    float distA = featureDistance(srcFeatures[i]->ptr() + pA * dimension, queryData);
+                    float distC = featureDistance(srcFeatures[i]->ptr() + pC * dimension, queryData);
+//                    if (weight * distA < distC) {
+//                        p = pA;
+//                        na++;
+//                    } else {
+//                        p = pC;
+//                        nc++;
+//                    }
+                    p = weight * distA < distC ? pA : pC;
+                }
                 // 填充像素
-                int p = indices.ptr()[0];
+                s[q] = p;
                 int px = p % srcPyramid[i].cols, py = p / srcPyramid[i].cols;
                 dstFilteredPyramid[i].at<float>(y, x) = srcFilteredPyramid[i].at<float>(py, px);
             }
             cout << "Finish level " << i << " row " << y << endl;
+//            cout << na << ":" << nc << endl;
         }
         Mat downSampled;
         cvtColor(dst, downSampled, COLOR_BGR2YUV);
@@ -151,7 +179,7 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& orig
     }
     
     // 归一化
-    if (sum < eps) { return;; }
+    if (sum < EPS) { return;; }
     for (int offset = 0; offset < dimension; offset++) {
         result[offset] /= sum;
     }
@@ -204,7 +232,7 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowe
     }
     
     // 归一化
-    if (sum < eps) { return; }
+    if (sum < EPS) { return; }
     for (int offset = 0; offset < dimension; offset++) {
         result[offset] /= sum;
     }
@@ -248,7 +276,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
             }
             
             // 归一化
-            if (sum < eps) { continue; }
+            if (sum < EPS) { continue; }
             for (int offset = 0; offset < dimension; offset++) {
                 result[start + offset] /= sum;
             }
@@ -310,7 +338,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
             }
             
             // 归一化
-            if (sum < eps) { continue; }
+            if (sum < EPS) { continue; }
             for (int offset = 0; offset < dimension; offset++) {
                 result[start + offset] /= sum;
             }
@@ -336,4 +364,13 @@ void ImageAnalogy::calculateSrcFeatures() {
 //            std::cout << std::endl;
 //        }
     }
+}
+
+float ImageAnalogy::featureDistance(float *a, float *b) {
+    float result = 0;
+    for (int i = 0; i < dimension; i++) {
+        float difference = a[i] - b[i];
+        result += difference * difference;
+    }
+    return result;
 }

@@ -41,6 +41,7 @@
 		907079D52491664E005B7C15 /* libflann.1.9.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 907079D42491664D005B7C15 /* libflann.1.9.1.dylib */; };
 		907079D62491664E005B7C15 /* libflann.1.9.1.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 907079D42491664D005B7C15 /* libflann.1.9.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		907079DE249215C4005B7C15 /* ImageAnalogy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 907079DC249215C4005B7C15 /* ImageAnalogy.cpp */; };
+		907079E124938C67005B7C15 /* CoherenceMatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 907079DF24938C67005B7C15 /* CoherenceMatch.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -103,6 +104,8 @@
 		907079D724916669005B7C15 /* ImageAnalogy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ImageAnalogy.entitlements; sourceTree = "<group>"; };
 		907079DC249215C4005B7C15 /* ImageAnalogy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ImageAnalogy.cpp; sourceTree = "<group>"; };
 		907079DD249215C4005B7C15 /* ImageAnalogy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ImageAnalogy.hpp; sourceTree = "<group>"; };
+		907079DF24938C67005B7C15 /* CoherenceMatch.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CoherenceMatch.cpp; sourceTree = "<group>"; };
+		907079E024938C67005B7C15 /* CoherenceMatch.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = CoherenceMatch.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,6 +159,8 @@
 				90358F0B248D68D40049798C /* main.cpp */,
 				907079DC249215C4005B7C15 /* ImageAnalogy.cpp */,
 				907079DD249215C4005B7C15 /* ImageAnalogy.hpp */,
+				907079DF24938C67005B7C15 /* CoherenceMatch.cpp */,
+				907079E024938C67005B7C15 /* CoherenceMatch.hpp */,
 			);
 			path = ImageAnalogy;
 			sourceTree = "<group>";
@@ -242,6 +247,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				90358F0C248D68D40049798C /* main.cpp in Sources */,
+				907079E124938C67005B7C15 /* CoherenceMatch.cpp in Sources */,
 				907079DE249215C4005B7C15 /* ImageAnalogy.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
