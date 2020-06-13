@@ -20,7 +20,6 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
     // 从金字塔底层向上重建
     for (int i = 0; i < levels; i++) {
         float weight = 1 + pow(2, i + 1 - levels) * kappa;
-//        int na = 0, nc = 0;
         // 数据结构初始化
         FlannIndex ann(*srcFeatures[i], FlannKDTreeIndexParams(4));
         ann.buildIndex();
@@ -48,32 +47,27 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
                 }
                 // 寻找近似最近邻
                 FloatMatrix query(queryData, numQuery, dimension);
-                int pA = indices.ptr()[0];
                 ann.knnSearch(query, indices, dists, numQuery, FlannSearchParams(128));
+                int pA = indices.ptr()[0];
                 // 一致性搜索
                 int pC = cm.match(*srcFeatures[i], queryData, dimension, x, y, s);
+                // 搜索失败的情况
                 if (pC == -1) {
                     p = pA;
                 }
                 else {
                     float distA = featureDistance(srcFeatures[i]->ptr() + pA * dimension, queryData);
                     float distC = featureDistance(srcFeatures[i]->ptr() + pC * dimension, queryData);
-//                    if (weight * distA < distC) {
-//                        p = pA;
-//                        na++;
-//                    } else {
-//                        p = pC;
-//                        nc++;
-//                    }
                     p = weight * distA < distC ? pA : pC;
                 }
+                // 处理边界
+                if (x < 1 || y < 1 || x > dstPyramid[i].cols - 2 || y > dstPyramid[i].rows - 2) p = pA;
                 // 填充像素
                 s[q] = p;
                 int px = p % srcPyramid[i].cols, py = p / srcPyramid[i].cols;
                 dstFilteredPyramid[i].at<float>(y, x) = srcFilteredPyramid[i].at<float>(py, px);
             }
             cout << "Finish level " << i << " row " << y << endl;
-//            cout << na << ":" << nc << endl;
         }
         Mat downSampled;
         cvtColor(dst, downSampled, COLOR_BGR2YUV);
@@ -88,6 +82,8 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
         Mat result;
         merge(YUV, result);
         cvtColor(result, result, COLOR_YUV2BGR);
+        if (i == levels - 1)
+            result.copyTo(dstFiltered);
         // 显示当前层图片
         imshow("image", result);
         waitKey();
@@ -107,14 +103,14 @@ void ImageAnalogy::buildPyramids(const Mat& src, const Mat& srcFiltered, const M
     extractLuminance(src, srcPyramid[levels - 1]);
     extractLuminance(srcFiltered, srcFilteredPyramid[levels - 1]);
     extractLuminance(dst, dstPyramid[levels - 1]);
-    extractLuminance(dstFiltered, dstFilteredPyramid[levels - 1]);
+    dstPyramid[levels - 1].copyTo(dstFilteredPyramid[levels - 1]);
     
     // 降采样
     for (int i = levels - 2; i >= 0; i--) {
         pyrDown(srcPyramid[i + 1], srcPyramid[i]);
         pyrDown(srcFilteredPyramid[i + 1], srcFilteredPyramid[i]);
         pyrDown(dstPyramid[i + 1], dstPyramid[i]);
-        pyrDown(dstFilteredPyramid[i + 1], dstFilteredPyramid[i]);
+        dstPyramid[i].copyTo(dstFilteredPyramid[i]);
     }
 }
 
@@ -207,6 +203,7 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowe
         }
     }
     
+    offset = 2 * smallWindowSize;
     int count = 0;
     int filteredFeatureDimension = largeWindowSize / 2 + 1;
     for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
@@ -313,6 +310,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
                 }
             }
             
+            offset = 2 * smallWindowSize;
             int count = 0;
             int filteredFeatureDimension = largeWindowSize / 2 + 1;
             for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
@@ -358,11 +356,6 @@ void ImageAnalogy::calculateSrcFeatures() {
             features = calculateFeatures(srcPyramid[i - 1], srcFilteredPyramid[i - 1], srcPyramid[i], srcFilteredPyramid[i]);
         }
         srcFeatures[i] = new FloatMatrix(features, count, dimension);
-//        for (int y = 0; y < srcFeatures[i]->rows; y++) {
-//            for (int x = 0; x < srcFeatures[i]->cols; x++)
-//                std::cout << srcFeatures[i]->ptr()[y * srcFeatures[i]->cols + x] << " ";
-//            std::cout << std::endl;
-//        }
     }
 }
 

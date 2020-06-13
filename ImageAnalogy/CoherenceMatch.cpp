@@ -19,7 +19,7 @@ CoherenceMatch::~CoherenceMatch() {}
 
 int CoherenceMatch::match(const Matrix<float>& features, float *query, int dimension, int x, int y, int *s) {
     int p = -1;
-    int minDistance = INF;
+    float minDistance = INF;
     
     // 搜索之前行的像素
     int minY = (y - radius >= 0 ? y - radius : 0);
