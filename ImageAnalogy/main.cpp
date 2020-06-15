@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <ctime>
 #include <opencv2/opencv.hpp>
 
 #include "ImageAnalogy.hpp"
@@ -16,10 +17,11 @@ using namespace std;
 using namespace cv;
 
 // 图片路径
-string srcPath = "/Users/sxy/Downloads/images/src.jpg";
-string srcFilteredPath = "/Users/sxy/Downloads/images/srcFiltered.jpg";
-string dstPath = "/Users/sxy/Downloads/images/dst.jpg";
-string dstFilteredPath = "/Users/sxy/Downloads/images/dstFiltered.jpg";
+string imageSetPath = "/Users/sxy/Downloads/embossing";
+string srcPath = imageSetPath + "/src.jpg";
+string srcFilteredPath = imageSetPath + "/srcFiltered.jpg";
+string dstPath = imageSetPath + "/dst.jpg";
+string dstFilteredPath = imageSetPath + "/dstFiltered.jpg";
 
 int main() {
     
@@ -42,9 +44,12 @@ int main() {
     }
     
     // 结果生成
+    clock_t start = clock();
     ImageAnalogy analogy;
     analogy.process(src, srcFiltered, dst, dstFiltered);
     imwrite(dstFilteredPath, dstFiltered);
+    clock_t end = clock();
+    cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "s" << endl;
     
     // 显示图片
     imshow("src", src);

@@ -66,6 +66,9 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
                 s[q] = p;
                 int px = p % srcPyramid[i].cols, py = p / srcPyramid[i].cols;
                 dstFilteredPyramid[i].at<float>(y, x) = srcFilteredPyramid[i].at<float>(py, px);
+//                if (i == levels - 1) {
+//                    dstFiltered.at<Vec3b>(y, x) = srcFiltered.at<Vec3b>(py, px);
+//                }
             }
             cout << "Finish level " << i << " row " << y << endl;
         }
