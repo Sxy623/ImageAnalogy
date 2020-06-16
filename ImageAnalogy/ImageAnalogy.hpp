@@ -46,11 +46,12 @@ private:
     // 高斯卷积核
     float *kernel;
     // 特征向量维度
-    static const int dimension = smallWindowSize * 2 + largeWindowSize + largeWindowSize / 2 + 1;
+    static const int channels = 3;
+    static const int dimension = (smallWindowSize * 2 + largeWindowSize + largeWindowSize / 2) * channels;
     // 特征向量
     FloatMatrix *srcFeatures[levels];
     // 一致性参数
-    static const int kappa = 5;
+    constexpr static const float kappa = 0.8;
     
     void extractLuminance(const Mat& src, Mat &dst);
     void buildPyramids(const Mat& src, const Mat& srcFiltered, const Mat& dst, const Mat& dstFiltered);

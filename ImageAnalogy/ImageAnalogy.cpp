@@ -65,31 +65,31 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
                 // 填充像素
                 s[q] = p;
                 int px = p % srcPyramid[i].cols, py = p / srcPyramid[i].cols;
-                dstFilteredPyramid[i].at<float>(y, x) = srcFilteredPyramid[i].at<float>(py, px);
+                dstFilteredPyramid[i].at<Vec3b>(y, x) = srcFilteredPyramid[i].at<Vec3b>(py, px);
 //                if (i == levels - 1) {
 //                    dstFiltered.at<Vec3b>(y, x) = srcFiltered.at<Vec3b>(py, px);
 //                }
             }
             cout << "Finish level " << i << " row " << y << endl;
         }
-        Mat downSampled;
-        cvtColor(dst, downSampled, COLOR_BGR2YUV);
-        // 降采样到同一尺度
-        for (int level = levels - 1; level > i; level--) {
-            pyrDown(downSampled, downSampled);
-        }
-        // 用生成的结果替换原图Y通道
-        vector<Mat> YUV(3);
-        split(downSampled, YUV);
-        dstFilteredPyramid[i].convertTo(YUV[0], CV_8UC1);
-        Mat result;
-        merge(YUV, result);
-        cvtColor(result, result, COLOR_YUV2BGR);
+//        Mat downSampled;
+//        cvtColor(dst, downSampled, COLOR_BGR2YUV);
+//        // 降采样到同一尺度
+//        for (int level = levels - 1; level > i; level--) {
+//            pyrDown(downSampled, downSampled);
+//        }
+//        // 用生成的结果替换原图Y通道
+//        vector<Mat> YUV(3);
+//        split(downSampled, YUV);
+//        dstFilteredPyramid[i].convertTo(YUV[0], CV_8UC1);
+//        Mat result;
+//        merge(YUV, result);
+//        cvtColor(result, result, COLOR_YUV2BGR);
         if (i == levels - 1)
-            result.copyTo(dstFiltered);
-        // 显示当前层图片
-        imshow("image", result);
-        waitKey();
+            dstFilteredPyramid[i].copyTo(dstFiltered);
+//        // 显示当前层图片
+//        imshow("image", dstFilteredPyramid[i]);
+//        waitKey();
     }
 }
 
@@ -103,10 +103,14 @@ void ImageAnalogy::extractLuminance(const Mat& src, Mat &dst) {
 void ImageAnalogy::buildPyramids(const Mat& src, const Mat& srcFiltered, const Mat& dst, const Mat& dstFiltered) {
     
     // 创建金字塔最高层
-    extractLuminance(src, srcPyramid[levels - 1]);
-    extractLuminance(srcFiltered, srcFilteredPyramid[levels - 1]);
-    extractLuminance(dst, dstPyramid[levels - 1]);
-    dstPyramid[levels - 1].copyTo(dstFilteredPyramid[levels - 1]);
+//    extractLuminance(src, srcPyramid[levels - 1]);
+//    extractLuminance(srcFiltered, srcFilteredPyramid[levels - 1]);
+//    extractLuminance(dst, dstPyramid[levels - 1]);
+    src.copyTo(srcPyramid[levels - 1]);
+    srcFiltered.copyTo(srcFilteredPyramid[levels - 1]);
+    dst.copyTo(dstPyramid[levels - 1]);
+    srcFiltered.copyTo(dstFilteredPyramid[levels - 1]);
+    dstFilteredPyramid[levels - 1] = dstFilteredPyramid[levels - 1](Rect(0, 0, dst.cols, dst.rows));
     
     // 降采样
     for (int i = levels - 2; i >= 0; i--) {
@@ -124,33 +128,39 @@ void ImageAnalogy::fillKernel(float *kernel, int size, float sigma) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             kernel[p] = 1 / (2 * PI * sigma * sigma) * exp(-((i - center) * (i - center) + (j - center) * (j - center)) / (2 * sigma * sigma));
-            sum += kernel[p];
             p++;
+            for (int k = 1; k < channels; k++) {
+                kernel[p] = kernel[p - 1];
+                p++;
+            }
+            sum += kernel[p - 1] * channels;
         }
     }
     // 归一化
     p = 0;
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            kernel[p++] /= sum;
+            for (int k = 0; k < channels; k++) {
+                kernel[p++] /= sum;
+            }
         }
     }
 }
 
 void ImageAnalogy::createKernel() {
-    kernel = new float[2 * (smallWindowSize + largeWindowSize)];
+    kernel = new float[2 * (smallWindowSize + largeWindowSize) * channels];
     float sigma = 0.8;
     fillKernel(kernel, smallWindow, sigma);
-    fillKernel(kernel + smallWindowSize, smallWindow, sigma);
-    fillKernel(kernel + 2 * smallWindowSize, largeWindow, sigma);
-    fillKernel(kernel + 2 * smallWindowSize + largeWindowSize, largeWindow, sigma);
+    fillKernel(kernel + channels * smallWindowSize, smallWindow, sigma);
+    fillKernel(kernel + channels * (2 * smallWindowSize), largeWindow, sigma);
+    fillKernel(kernel + channels * (2 * smallWindowSize + largeWindowSize), largeWindow, sigma);
 }
 
 void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& origin, const Mat& filtered) {
     int offset = 0;
     float sum = 0;
     
-    for (int k = 0; k < 2 * smallWindowSize; k++)
+    for (int k = 0; k < 2 * smallWindowSize * channels; k++)
         result[offset++] = 0;
     
     int count = 0;
@@ -160,25 +170,29 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& orig
             int yy = y + dy, xx = x + dx;
             count++;
             if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
-                result[offset] = 0;
-                if (count <= filteredFeatureDimension) {
-                    result[offset + largeWindowSize] = 0;
+                for (int k = 0; k < channels; k++) {
+                    result[offset] = 0;
+                    if (count < filteredFeatureDimension) {
+                        result[offset + largeWindowSize * channels] = 0;
+                    }
+                    offset++;
                 }
-                offset++;
                 continue;
             }
-            result[offset] = origin.at<float>(yy, xx) * kernel[offset];
-            sum += result[offset] * result[offset];
-            if (count <= filteredFeatureDimension) {
-                result[offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                sum += result[offset + largeWindowSize] * result[offset + largeWindowSize];
+            for (int k = 0; k < channels; k++) {
+                result[offset] = origin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                sum += result[offset] * result[offset];
+                if (count < filteredFeatureDimension) {
+                    result[offset + largeWindowSize * channels] = filtered.at<Vec3b>(yy, xx)[k] * kernel[offset + largeWindowSize * channels];
+                    sum += result[offset + largeWindowSize * channels] * result[offset + largeWindowSize * channels];
+                }
+                offset++;
             }
-            offset++;
         }
     }
     
     // 归一化
-    if (sum < EPS) { return;; }
+    if (sum < EPS) { return; }
     for (int offset = 0; offset < dimension; offset++) {
         result[offset] /= sum;
     }
@@ -193,20 +207,24 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowe
         for (int dx = -smallWindow / 2; dx <= smallWindow / 2; dx++) {
             int yy = halfY + dy, xx = halfX + dx;
             if (yy < 0 || xx < 0 || yy >= lowerOrigin.rows || xx >= lowerOrigin.cols) {
-                result[offset] = 0;
-                result[offset + smallWindowSize] = 0;
-                offset++;
+                for (int k = 0; k < channels; k++) {
+                    result[offset] = 0;
+                    result[offset + smallWindowSize * channels] = 0;
+                    offset++;
+                }
                 continue;
             }
-            result[offset] = lowerOrigin.at<float>(yy, xx) * kernel[offset];
-            sum += result[offset] * result[offset];
-            result[offset + smallWindowSize] = lowerFiltered.at<float>(yy, xx) * kernel[offset + smallWindowSize];
-            sum += result[offset + smallWindowSize] * result[offset + smallWindowSize];
-            offset++;
+            for (int k = 0; k < channels; k++) {
+                result[offset] = lowerOrigin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                sum += result[offset] * result[offset];
+                result[offset + smallWindowSize * channels] = lowerFiltered.at<Vec3b>(yy, xx)[k] * kernel[offset + smallWindowSize * channels];
+                sum += result[offset + smallWindowSize * channels] * result[offset + smallWindowSize * channels];
+                offset++;
+            }
         }
     }
     
-    offset = 2 * smallWindowSize;
+    offset = 2 * smallWindowSize * channels;
     int count = 0;
     int filteredFeatureDimension = largeWindowSize / 2 + 1;
     for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
@@ -214,20 +232,24 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowe
             int yy = y + dy, xx = x + dx;
             count++;
             if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
-                result[offset] = 0;
-                if (count <= filteredFeatureDimension) {
-                    result[offset + largeWindowSize] = 0;
+                for (int k = 0; k < channels; k++) {
+                    result[offset] = 0;
+                    if (count < filteredFeatureDimension) {
+                        result[offset + largeWindowSize * channels] = 0;
+                    }
+                    offset++;
                 }
-                offset++;
                 continue;
             }
-            result[offset] = origin.at<float>(yy, xx) * kernel[offset];
-            sum += result[offset] * result[offset];
-            if (count <= filteredFeatureDimension) {
-                result[offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                sum += result[offset + largeWindowSize] * result[offset + largeWindowSize];
+            for (int k = 0; k < channels; k++) {
+                result[offset] = origin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                sum += result[offset] * result[offset];
+                if (count < filteredFeatureDimension) {
+                    result[offset + largeWindowSize * channels] = filtered.at<Vec3b>(yy, xx)[k] * kernel[offset + largeWindowSize * channels];
+                    sum += result[offset + largeWindowSize * channels] * result[offset + largeWindowSize * channels];
+                }
+                offset++;
             }
-            offset++;
         }
     }
     
@@ -248,7 +270,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
             int offset = 0;
             float sum = 0;
             
-            for (int k = 0; k < 2 * smallWindowSize; k++)
+            for (int k = 0; k < 2 * smallWindowSize * channels; k++)
                 result[start + offset++] = 0;
             
             int count = 0;
@@ -258,20 +280,24 @@ float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
                     int yy = y + dy, xx = x + dx;
                     count++;
                     if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
-                        result[start + offset] = 0;
-                        if (count <= filteredFeatureDimension) {
-                            result[start + offset + largeWindowSize] = 0;
+                        for (int k = 0; k < channels; k++) {
+                            result[start + offset] = 0;
+                            if (count < filteredFeatureDimension) {
+                                result[start + offset + largeWindowSize * channels] = 0;
+                            }
+                            offset++;
                         }
-                        offset++;
                         continue;
                     }
-                    result[start + offset] = origin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset] * result[start + offset];
-                    if (count <= filteredFeatureDimension) {
-                        result[start + offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                        sum += result[start + offset + largeWindowSize] * result[start + offset + largeWindowSize];
+                    for (int k = 0; k < channels; k++) {
+                        result[start + offset] = origin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                        sum += result[start + offset] * result[start + offset];
+                        if (count < filteredFeatureDimension) {
+                            result[start + offset + largeWindowSize * channels] = filtered.at<Vec3b>(yy, xx)[k] * kernel[offset + largeWindowSize * channels];
+                            sum += result[start + offset + largeWindowSize * channels] * result[start + offset + largeWindowSize * channels];
+                        }
+                        offset++;
                     }
-                    offset++;
                 }
             }
             
@@ -300,20 +326,24 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
                 for (int dx = -smallWindow / 2; dx <= smallWindow / 2; dx++) {
                     int yy = halfY + dy, xx = halfX + dx;
                     if (yy < 0 || xx < 0 || yy >= lowerOrigin.rows || xx >= lowerOrigin.cols) {
-                        result[start + offset] = 0;
-                        result[start + offset + smallWindowSize] = 0;
-                        offset++;
+                        for (int k = 0; k < channels; k++) {
+                            result[start + offset] = 0;
+                            result[start + offset + smallWindowSize * channels] = 0;
+                            offset++;
+                        }
                         continue;
                     }
-                    result[start + offset] = lowerOrigin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset] * result[start + offset];
-                    result[start + offset + smallWindowSize] = lowerFiltered.at<float>(yy, xx) * kernel[offset + smallWindowSize];
-                    sum += result[start + offset + smallWindowSize] * result[start + offset + smallWindowSize];
-                    offset++;
+                    for (int k = 0; k < channels; k++) {
+                        result[start + offset] = lowerOrigin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                        sum += result[start + offset] * result[start + offset];
+                        result[start + offset + smallWindowSize * channels] = lowerFiltered.at<Vec3b>(yy, xx)[k] * kernel[offset + smallWindowSize * channels];
+                        sum += result[start + offset + smallWindowSize * channels] * result[start + offset + smallWindowSize * channels];
+                        offset++;
+                    }
                 }
             }
             
-            offset = 2 * smallWindowSize;
+            offset = 2 * smallWindowSize * channels;
             int count = 0;
             int filteredFeatureDimension = largeWindowSize / 2 + 1;
             for (int dy = -largeWindow / 2; dy <= largeWindow / 2; dy++) {
@@ -321,20 +351,24 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
                     int yy = y + dy, xx = x + dx;
                     count++;
                     if (yy < 0 || xx < 0 || yy >= origin.rows || xx >= origin.cols) {
-                        result[start + offset] = 0;
-                        if (count <= filteredFeatureDimension) {
-                            result[start + offset + largeWindowSize] = 0;
+                        for (int k = 0; k < channels; k++) {
+                            result[start + offset] = 0;
+                            if (count < filteredFeatureDimension) {
+                                result[start + offset + largeWindowSize * channels] = 0;
+                            }
+                            offset++;
                         }
-                        offset++;
                         continue;
                     }
-                    result[start + offset] = origin.at<float>(yy, xx) * kernel[offset];
-                    sum += result[start + offset] * result[start + offset];
-                    if (count <= filteredFeatureDimension) {
-                        result[start + offset + largeWindowSize] = filtered.at<float>(yy, xx) * kernel[offset + largeWindowSize];
-                        sum += result[start + offset + largeWindowSize] * result[start + offset + largeWindowSize];
+                    for (int k = 0; k < channels; k++) {
+                        result[start + offset] = origin.at<Vec3b>(yy, xx)[k] * kernel[offset];
+                        sum += result[start + offset] * result[start + offset];
+                        if (count < filteredFeatureDimension) {
+                            result[start + offset + largeWindowSize * channels] = filtered.at<Vec3b>(yy, xx)[k] * kernel[offset + largeWindowSize * channels];
+                            sum += result[start + offset + largeWindowSize * channels] * result[start + offset + largeWindowSize * channels];
+                        }
+                        offset++;
                     }
-                    offset++;
                 }
             }
             
