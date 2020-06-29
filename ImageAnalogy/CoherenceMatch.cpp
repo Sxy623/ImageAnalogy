@@ -17,6 +17,7 @@ CoherenceMatch::CoherenceMatch(int srcRows, int srcCols, int dstRows, int dstCol
 
 CoherenceMatch::~CoherenceMatch() {}
 
+// 进行一致性匹配
 int CoherenceMatch::match(const Matrix<float>& features, float *query, int dimension, int x, int y, int *s) {
     int p = -1;
     float minDistance = INF;
@@ -61,6 +62,7 @@ int CoherenceMatch::match(const Matrix<float>& features, float *query, int dimen
     return p;
 }
 
+// 计算两个特征向量之间的距离
 float CoherenceMatch::distance(float *a, float *b, int dimension) {
     float result = 0;
     for (int i = 0; i < dimension; i++) {

@@ -19,12 +19,14 @@ class CoherenceMatch {
 public:
     CoherenceMatch(int srcRows, int srcCols, int dstRows, int dstCols);
     ~CoherenceMatch();
+    // 进行一致性匹配
     int match(const Matrix<float>& features, float *query, int dimension, int x, int y, int *s);
 private:
+    // 匹配半径
     static const int radius = 2;
     int srcRows, srcCols;
     int dstRows, dstCols;
-    
+    // 计算两个特征向量之间的距离
     float distance(float *a, float *b, int dimension);
 };
 

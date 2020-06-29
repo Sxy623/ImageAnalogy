@@ -12,6 +12,7 @@ ImageAnalogy::ImageAnalogy() {}
 
 ImageAnalogy::~ImageAnalogy() {}
 
+// 进行图像类比
 void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& dst, Mat& dstFiltered) {
     dstFiltered.create(dst.size(), CV_8UC3);
     buildPyramids(src, srcFiltered, dst, dstFiltered);
@@ -93,6 +94,7 @@ void ImageAnalogy::process(const Mat& src, const Mat& srcFiltered, const Mat& ds
     }
 }
 
+// 提取亮度值
 void ImageAnalogy::extractLuminance(const Mat& src, Mat &dst) {
     Mat srcYUV, YUV[3];
     cvtColor(src, srcYUV, COLOR_BGR2YUV);
@@ -100,6 +102,7 @@ void ImageAnalogy::extractLuminance(const Mat& src, Mat &dst) {
     YUV[0].convertTo(dst, CV_32FC1);
 }
 
+// 生成高斯金字塔
 void ImageAnalogy::buildPyramids(const Mat& src, const Mat& srcFiltered, const Mat& dst, const Mat& dstFiltered) {
     
     // 创建金字塔最高层
@@ -121,6 +124,7 @@ void ImageAnalogy::buildPyramids(const Mat& src, const Mat& srcFiltered, const M
     }
 }
 
+// 填充高斯卷积核
 void ImageAnalogy::fillKernel(float *kernel, int size, float sigma) {
     int center = size / 2;
     int p = 0;
@@ -147,6 +151,7 @@ void ImageAnalogy::fillKernel(float *kernel, int size, float sigma) {
     }
 }
 
+// 创建卷积核
 void ImageAnalogy::createKernel() {
     kernel = new float[2 * (smallWindowSize + largeWindowSize) * channels];
     float sigma = 0.8;
@@ -156,6 +161,7 @@ void ImageAnalogy::createKernel() {
     fillKernel(kernel + channels * (2 * smallWindowSize + largeWindowSize), largeWindow, sigma);
 }
 
+// 计算单个像素特征向量（最底层）
 void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& origin, const Mat& filtered) {
     int offset = 0;
     float sum = 0;
@@ -198,6 +204,7 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& orig
     }
 }
 
+// 计算单个像素特征向量（非最底层）
 void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered) {
     int offset = 0;
     float sum = 0;
@@ -260,6 +267,7 @@ void ImageAnalogy::calculateFeature(float *result, int x, int y, const Mat& lowe
     }
 }
 
+// 计算整层所有像素特征向量（最底层）
 float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
     int size = origin.rows * origin.cols;
     float *result = new float[size * dimension];
@@ -311,6 +319,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& origin, const Mat& filtered) {
     return result;
 }
 
+// 计算整层所有像素特征向量（非最底层）
 float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerFiltered, const Mat& origin, const Mat& filtered) {
     int size = origin.rows * origin.cols;
     float *result = new float[size * dimension];
@@ -382,6 +391,7 @@ float* ImageAnalogy::calculateFeatures(const Mat& lowerOrigin, const Mat& lowerF
     return result;
 }
 
+// 计算source图片所有层的特征向量
 void ImageAnalogy::calculateSrcFeatures() {
     for (int i = 0; i < levels; i++) {
         float *features = nullptr;
@@ -396,6 +406,7 @@ void ImageAnalogy::calculateSrcFeatures() {
     }
 }
 
+// 计算两个特征向量之间的距离
 float ImageAnalogy::featureDistance(float *a, float *b) {
     float result = 0;
     for (int i = 0; i < dimension; i++) {
