@@ -16,14 +16,21 @@
 using namespace std;
 using namespace cv;
 
-// 图片路径
-string imageSetPath = "/Users/sxy/Downloads/embossing";
-string srcPath = imageSetPath + "/src.jpg";
-string srcFilteredPath = imageSetPath + "/srcFiltered.jpg";
-string dstPath = imageSetPath + "/dst.jpg";
-string dstFilteredPath = imageSetPath + "/dstFiltered.jpg";
-
-int main() {
+int main(int argc, char* argv[]) {
+    
+    // 检查参数个数
+    if (argc < 2) {
+        cout << "Parameter not enough!" << endl;
+        cout << "Format: ./ImageAnalagy <data-set_path>" << endl;
+        return 0;
+    }
+    
+    // 图片路径
+    string imageSetPath = argv[1];
+    string srcPath = imageSetPath + "/src.jpg";
+    string srcFilteredPath = imageSetPath + "/srcFiltered.jpg";
+    string dstPath = imageSetPath + "/dst.jpg";
+    string dstFilteredPath = imageSetPath + "/dstFiltered.jpg";
     
     // 加载图片
     Mat src, srcFiltered, dst, dstFiltered;
